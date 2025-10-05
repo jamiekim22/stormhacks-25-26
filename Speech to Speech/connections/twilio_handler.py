@@ -53,6 +53,9 @@ class TwilioHandler:
         # WebSocket connection for media streams
         self.websocket: Optional[WebSocket] = None
         self.media_stream_sid: Optional[str] = None
+        
+        # Active call tracking
+        self.active_call_sid: Optional[str] = None
 
         # Audio format settings
         self.twilio_smaple_rate = 8_000 # Twilio uses 8kHz
@@ -275,6 +278,9 @@ class TwilioHandler:
                 method='POST'
             )
 
+            # Store the call SID for later termination
+            self.active_call_sid = call.sid
+
             logger.info(f"Call initiated! SID: {call.sid}")
             logger.info("Answer the call to start the conversation!")
             
@@ -284,6 +290,24 @@ class TwilioHandler:
             logger.info("1. Set your personal number in the config")
             logger.info("2. Configure your domain for webhooks")
             logger.info("3. Or manually call your Twilio number")
+
+    def terminate_call(self):
+        """Terminate the active Twilio call."""
+        if not self.active_call_sid:
+            logger.warning("No active call to terminate")
+            return
+            
+        try:
+            # Update the call status to 'completed' to hang up
+            call = self.client.calls(self.active_call_sid).update(status='completed')
+            logger.info(f"Call terminated successfully. SID: {self.active_call_sid}")
+            self.active_call_sid = None
+            
+            # Set stop event to end the pipeline
+            self.stop_event.set()
+            
+        except Exception as e:
+            logger.error(f"Failed to terminate call: {e}")
 
     def run(self):
         """Main run method for the Twilio handler."""
@@ -302,6 +326,11 @@ class TwilioHandler:
         # Wait for stop event
         while not self.stop_event.is_set():
             self.stop_event.wait(1)
+        
+        # Terminate the call when stop event is set
+        if self.active_call_sid:
+            logger.info("Stop event detected, terminating call...")
+            self.terminate_call()
             
         logger.info("Twilio handler stopped")
 

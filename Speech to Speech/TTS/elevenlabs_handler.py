@@ -111,11 +111,73 @@ class ElevenLabsTTSHandler(BaseHandler):
         """
         return self.voice_id
 
+    def _save_json_to_file(self, json_text):
+        """Save JSON output to a file."""
+        try:
+            import json
+            from datetime import datetime
+            
+            # Try to complete incomplete JSON
+            if not json_text.strip().endswith('}'):
+                # Add missing closing brace and any incomplete fields
+                json_text = json_text.strip()
+                if not json_text.endswith('"'):
+                    json_text += '"'
+                json_text += '}'
+            
+            # Parse the JSON to validate it
+            json_data = json.loads(json_text)
+            
+            # Add timestamp
+            json_data["timestamp"] = datetime.now().isoformat()
+            
+            # Save to file
+            filename = f"security_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            with open(filename, 'w', encoding='utf-8') as f:
+                json.dump(json_data, f, indent=2, ensure_ascii=False)
+            
+            console.print(f"[green]JSON analysis saved to: {filename}")
+            logger.info(f"Security analysis saved to {filename}")
+            
+        except json.JSONDecodeError as e:
+            console.print(f"[yellow]Invalid JSON received, saving as text: {e}")
+            # Save as text file if JSON is invalid
+            filename = f"security_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write(json_text)
+            console.print(f"[green]Analysis saved as text to: {filename}")
+        except Exception as e:
+            console.print(f"[red]Error saving JSON: {e}")
+            logger.error(f"Failed to save JSON: {e}")
+
     def process(self, llm_sentence):
         # Normalize first so we don't print tuple/list/dict representations
         text, lang = self._normalize_text(llm_sentence)
         console.print(f"[green]ASSISTANT: {text}")
 
+        # Check for END CALL trigger
+        if '["END CALL"]' in text or '["END CALL"]' in str(llm_sentence):
+            console.print("[red]END CALL detected! Terminating call...")
+            
+            # Check if JSON is in the same response (even if incomplete)
+            if '{' in text:
+                # Extract JSON from the response (even if incomplete)
+                start_idx = text.find('{')
+                json_part = text[start_idx:]
+                if json_part.strip():
+                    self._save_json_to_file(json_part)
+            
+            # Trigger call termination by setting stop event
+            self.stop_event.set()
+            return
+        
+        # Check if this is JSON output (after END CALL)
+        if text.strip().startswith('{') and text.strip().endswith('}'):
+            self._save_json_to_file(text)
+            # Now terminate the call after JSON is saved
+            console.print("[red]JSON saved! Terminating call...")
+            self.stop_event.set()
+            return      
         voice_id = self._voice_for_lang(lang)
 
         if self.stream:
