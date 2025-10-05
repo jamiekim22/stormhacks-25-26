@@ -1,0 +1,236 @@
+import asyncio
+import base64
+import json
+import logging
+import threading
+from queue import Queue
+from typing import Optional
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import JSONResponse
+from twilio.rest import Client
+from twilio.twiml.voice_response import VoiceResponse
+import uvicorn
+from threading import Event
+
+logger = logging.getLogger(__name__)
+
+
+class TwilioHandler:
+    """
+    Handles Twilio voice calls integration with the speech-to-speech pipeline.
+    Receives audio from Twilio and sends audio back through Twilio's Media Streams.
+    """
+
+    def __init__(
+        self,
+        stop_event: Event,
+        queue_in: Queue,
+        queue_out: Queue,
+        should_listen: Event,
+        account_sid: str,
+        auth_token: str,
+        phone_number: str,
+        port: int = 8000,
+        user_number: Optional[str] = None,
+        domain: Optional[str] = None,
+    ):
+        self.stop_event = stop_event
+        self.queue_in = queue_in  # Audio chunks from Twilio
+        self.queue_out = queue_out  # Audio chunks to send to Twilio
+        self.should_listen = should_listen
+        self.account_sid = account_sid
+        self.auth_token = auth_token
+        self.phone_number = phone_number
+        self.port = port
+        self.user_number = user_number
+        self.twilio_domain = domain
+        
+        # Twilio client
+        self.client = Client(account_sid, auth_token)
+        
+        # WebSocket connection for media streams
+        self.websocket: Optional[WebSocket] = None
+        self.media_stream_sid: Optional[str] = None
+        
+        # FastAPI app for webhooks
+        self.app = FastAPI()
+        self.setup_routes()
+        
+        # Thread for running the FastAPI server
+        self.server_thread: Optional[threading.Thread] = None
+
+    def setup_routes(self):
+        """Setup FastAPI routes for Twilio webhooks."""
+        
+        @self.app.post("/voice")
+        async def handle_voice_call(request_data: dict):
+            """Handle incoming voice calls."""
+            response = VoiceResponse()
+            
+            # Start media stream
+            start = response.start()
+            stream = start.stream(
+                url=f"wss://your-domain.com/stream",  # Replace with your domain
+                track="both_tracks"
+            )
+            
+            # Say something to start the conversation
+            response.say("Hello! I'm your AI assistant. How can I help you today?")
+            
+            return JSONResponse(content=str(response))
+
+        @self.app.post("/stream")
+        async def handle_media_stream(request_data: dict):
+            """Handle media stream events."""
+            event_type = request_data.get("event")
+            
+            if event_type == "start":
+                self.media_stream_sid = request_data.get("streamSid")
+                logger.info(f"Media stream started: {self.media_stream_sid}")
+                self.should_listen.set()
+                
+            elif event_type == "media":
+                # Decode and queue incoming audio
+                media_payload = request_data.get("media", {}).get("payload")
+                if media_payload:
+                    audio_data = base64.b64decode(media_payload)
+                    self.queue_in.put(audio_data)
+                    
+            elif event_type == "stop":
+                logger.info("Media stream stopped")
+                self.stop_event.set()
+                
+            return JSONResponse(content="OK")
+
+        @self.app.websocket("/stream")
+        async def websocket_endpoint(websocket: WebSocket):
+            """WebSocket endpoint for bidirectional media streaming."""
+            await websocket.accept()
+            self.websocket = websocket
+            logger.info("WebSocket connection established")
+            
+            try:
+                # Start sending audio from queue
+                asyncio.create_task(self.send_audio_to_twilio())
+                
+                # Listen for incoming messages
+                while not self.stop_event.is_set():
+                    try:
+                        data = await websocket.receive_text()
+                        message = json.loads(data)
+                        
+                        if message.get("event") == "media":
+                            # Handle incoming audio
+                            payload = message.get("media", {}).get("payload")
+                            if payload:
+                                audio_data = base64.b64decode(payload)
+                                self.queue_in.put(audio_data)
+                                
+                    except WebSocketDisconnect:
+                        break
+                    except Exception as e:
+                        logger.error(f"WebSocket error: {e}")
+                        
+            except Exception as e:
+                logger.error(f"WebSocket connection error: {e}")
+            finally:
+                self.websocket = None
+
+    async def send_audio_to_twilio(self):
+        """Send audio from queue to Twilio via WebSocket."""
+        while not self.stop_event.is_set() and self.websocket:
+            try:
+                if not self.queue_out.empty():
+                    audio_chunk = self.queue_out.get(timeout=0.1)
+                    
+                    # Encode audio as base64
+                    audio_b64 = base64.b64encode(audio_chunk).decode('utf-8')
+                    
+                    # Send to Twilio
+                    message = {
+                        "event": "media",
+                        "streamSid": self.media_stream_sid,
+                        "media": {
+                            "payload": audio_b64
+                        }
+                    }
+                    
+                    await self.websocket.send_text(json.dumps(message))
+                    
+            except Exception as e:
+                logger.error(f"Error sending audio to Twilio: {e}")
+                await asyncio.sleep(0.1)
+
+    def start_server(self):
+        """Start the FastAPI server in a separate thread."""
+        def run_server():
+            uvicorn.run(
+                self.app,
+                host="0.0.0.0",
+                port=self.port,
+                log_level="info"
+            )
+        
+        self.server_thread = threading.Thread(target=run_server, daemon=True)
+        self.server_thread.start()
+        logger.info(f"Twilio webhook server started on port {self.port}")
+
+    def initiate_call(self):
+        """Initiate a call to the user's number."""
+        if not self.user_number:
+            logger.warning("No user number configured. Set 'twilio_user_number' in config to enable auto-calling.")
+            return
+            
+        try:
+            logger.info(f"Initiating call to {self.user_number}...")
+            
+            outbound_twiml = (
+                f'<?xml version="1.0" encoding="UTF-8"?>'
+                f'<Response><Connect><Stream url="wss://{self.twilio_domain}/voice/" /></Connect></Response>'
+            )
+
+          
+            
+            # Use ngrok or your domain for webhooks
+            webhook_url = f"{self.twilio_domain}/voice" if self.twilio_domain else f"http://localhost:{self.port}/voice"
+            
+            call = self.client.calls.create(
+                from_=self.phone_number, to=self.user_number, twiml=outbound_twiml
+            )
+
+            logger.info(f"Call initiated! SID: {call.sid}")
+            logger.info("Answer the call to start the conversation!")
+            
+        except Exception as e:
+            logger.error(f"Failed to initiate call: {e}")
+            logger.info("Make sure to:")
+            logger.info("1. Set your personal number in the config")
+            logger.info("2. Configure your domain for webhooks")
+            logger.info("3. Or manually call your Twilio number")
+
+    def run(self):
+        """Main run method for the Twilio handler."""
+        logger.info("Starting Twilio handler...")
+        
+        # Start the webhook server
+        self.start_server()
+        
+        # Wait a moment for server to start
+        import time
+        time.sleep(2)
+        
+        # Automatically call the user's number
+        self.initiate_call()
+        
+        # Wait for stop event
+        while not self.stop_event.is_set():
+            self.stop_event.wait(1)
+            
+        logger.info("Twilio handler stopped")
+
+    def stop(self):
+        """Stop the Twilio handler."""
+        self.stop_event.set()
+        if self.websocket:
+            asyncio.create_task(self.websocket.close())
+        logger.info("Twilio handler stopped")

@@ -34,6 +34,7 @@ from transformers import (
 )
 from arguments_classes.elevenlabs_stt_arguments import ElevenLabsSTTHandlerArguments
 from arguments_classes.elevenlabs_tts_arguments import ElevenLabsTTSHandlerArguments
+from arguments_classes.twilio_arguments import TwilioHandlerArguments
 
 
 from utils.thread_manager import ThreadManager
@@ -92,7 +93,8 @@ def parse_arguments():
             ChatTTSHandlerArguments,
             FacebookMMSTTSHandlerArguments,
             ElevenLabsSTTHandlerArguments,
-            ElevenLabsTTSHandlerArguments,   
+            ElevenLabsTTSHandlerArguments,
+            TwilioHandlerArguments,
         )
     )
 
@@ -184,6 +186,7 @@ def prepare_all_args(
     facebook_mms_tts_handler_kwargs,
     elevenlabs_stt_handler_kwargs,  
     elevenlabs_tts_handler_kwargs,
+    twilio_handler_kwargs,
 ):
     prepare_module_args(
         module_kwargs,
@@ -199,6 +202,7 @@ def prepare_all_args(
         facebook_mms_tts_handler_kwargs,
         elevenlabs_stt_handler_kwargs,
         elevenlabs_tts_handler_kwargs,
+        twilio_handler_kwargs,
     )
 
     rename_args(whisper_stt_handler_kwargs, "stt")
@@ -213,6 +217,7 @@ def prepare_all_args(
     rename_args(facebook_mms_tts_handler_kwargs, "facebook_mms")
     rename_args(elevenlabs_stt_handler_kwargs, "elevenlabs_stt") 
     rename_args(elevenlabs_tts_handler_kwargs, "elevenlabs_tts")
+    rename_args(twilio_handler_kwargs, "twilio")
 
 
 def initialize_queues_and_events():
@@ -245,6 +250,7 @@ def build_pipeline(
     queues_and_events,
     elevenlabs_stt_handler_kwargs, 
     elevenlabs_tts_handler_kwargs,
+    twilio_handler_kwargs,
 ):
     stop_event = queues_and_events["stop_event"]
     should_listen = queues_and_events["should_listen"]
@@ -261,6 +267,23 @@ def build_pipeline(
         )
         comms_handlers = [local_audio_streamer]
         should_listen.set()
+    elif module_kwargs.mode == "twilio":
+        from connections.twilio_handler import TwilioHandler
+
+        comms_handlers = [
+            TwilioHandler(
+                stop_event=stop_event,
+                queue_in=recv_audio_chunks_queue,
+                queue_out=send_audio_chunks_queue,
+                should_listen=should_listen,
+                account_sid=twilio_handler_kwargs.account_sid,
+                auth_token=twilio_handler_kwargs.auth_token,
+                phone_number=twilio_handler_kwargs.phone_number,
+                port=twilio_handler_kwargs.port,
+                user_number=twilio_handler_kwargs.user_number,
+                domain=twilio_handler_kwargs.domain,
+            )
+        ]
     else:
         from connections.socket_receiver import SocketReceiver
         from connections.socket_sender import SocketSender
@@ -470,7 +493,8 @@ def main():
         chat_tts_handler_kwargs,
         facebook_mms_tts_handler_kwargs,
         elevenlabs_stt_handler_kwargs, 
-        elevenlabs_tts_handler_kwargs,   
+        elevenlabs_tts_handler_kwargs,
+        twilio_handler_kwargs,
     ) = parse_arguments()
 
     setup_logger(module_kwargs.log_level)
@@ -489,6 +513,7 @@ def main():
         facebook_mms_tts_handler_kwargs,
         elevenlabs_stt_handler_kwargs,
         elevenlabs_tts_handler_kwargs,
+        twilio_handler_kwargs,
     )
 
     queues_and_events = initialize_queues_and_events()
@@ -511,6 +536,7 @@ def main():
         queues_and_events,
         elevenlabs_stt_handler_kwargs,    # ← add
         elevenlabs_tts_handler_kwargs,
+        twilio_handler_kwargs,
     )
 
     try:

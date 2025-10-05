@@ -89,7 +89,7 @@ def setup_logger(log_level):
 
     # torch compile logs
     if log_level == "debug":
-        torch._logging.set_logs(graph_breaks=True, recompiles=True, cudagraphs=True)
+        torch._logging.set_logs(graph_breaks=True, recompiles=True)
 
 
 def prepare_module_args(module_kwargs, *handler_kwargs):
