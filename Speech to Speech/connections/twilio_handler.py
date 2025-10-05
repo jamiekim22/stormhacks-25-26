@@ -11,6 +11,8 @@ from twilio.rest import Client
 from twilio.twiml.voice_response import VoiceResponse
 import uvicorn
 from threading import Event
+import numpy as np
+import audioop
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +53,15 @@ class TwilioHandler:
         # WebSocket connection for media streams
         self.websocket: Optional[WebSocket] = None
         self.media_stream_sid: Optional[str] = None
+
+        # Audio format settings
+        self.twilio_smaple_rate = 8_000 # Twilio uses 8kHz
+        self.target_sample_rate = 16_000 # Pipeline expects 16kHz
+
+        # Audio buffering - accumulate small Twilio chunks into larger chunks for VAD
+        # VAD needs at least 512 samples (32 ms at 16 kHz) to work properly
+        self.audio_buffer = b""
+        self.min_chunk_size = 1_024 # butes = 512 samples at 16 kHz (32 ms)
         
         # FastAPI app for webhooks
         self.app = FastAPI()
@@ -59,25 +70,62 @@ class TwilioHandler:
         # Thread for running the FastAPI server
         self.server_thread: Optional[threading.Thread] = None
 
+    def convert_twilio_audio_to_pipeline_format(self, audio_data: bytes) -> bytes:
+        try:
+            pcm_audio = audioop.ulaw2lin(audio_data, 2) # 2 = 16-bit samples
+            resampled_audio, _ = audioop.ratecv(
+                pcm_audio,
+                2, # sample width (2 bytes = 16 bits)
+                1, # number of channels (mono)
+                self.twilio_smaple_rate, # input sample rate (8kHz)
+                self.target_sample_rate, # output sample rate (16kHz)
+                None # state (None or first call)
+            )
+            return resampled_audio
+        except Exception as e:
+            logger.error(f"Error converting audio format: {e}")
+            return b""
+        
+    def convert_pipeline_audio_to_twilio_format(self, audio_data: bytes) -> bytes:
+        try:
+            resampled_audio, _ = audioop.ratecv(
+                audio_data,
+                2, # sample width (2 bytes = 16 bits)
+                1, # number of channels (mono)
+                self.target_sample_rate, # output sample rate (16kHz)
+                self.twilio_smaple_rate, # input sample rate (8kHz)
+                None # state (None or first call)
+            )
+            mulaw_audio = audioop.lin2ulaw(resampled_audio, 2)
+            return mulaw_audio
+        except Exception as e:
+            logger.error(f"Error converting audio to Twilio format: {e}")
+            return b""
+
     def setup_routes(self):
         """Setup FastAPI routes for Twilio webhooks."""
         
         @self.app.post("/voice")
-        async def handle_voice_call(request_data: dict):
+        async def handle_voice_call():
             """Handle incoming voice calls."""
+            logger.info("Recieved incoming call webhook")
             response = VoiceResponse()
             
-            # Start media stream
-            start = response.start()
-            stream = start.stream(
-                url=f"wss://your-domain.com/stream",  # Replace with your domain
-                track="both_tracks"
-            )
+            # Start media stream use wss for real-time webSocket connection
+            connect = response.connect()
+            # Ensure the domain uses wss:// protocol for secure webSocket
+            if self.twilio_domain:
+                # Use domain as is if it alreadyy has wss://, otherwise add it
+                stream_url = self.twilio_domain if self.twilio_domain.startswith('wss://') or self.twilio_domain.startswith('ws://') else f"wss://{self.twilio_domain}"
+                stream_url = f"{stream_url}/stream"
+            else:
+                stream_url = f"ws://localhost:{self.port}/stream"
+
+            connect.stream(url=stream_url)
+            logger.info(f"Responding with TwiML to connect to WebSocket stream: {stream_url}")
             
-            # Say something to start the conversation
-            response.say("Hello! I'm your AI assistant. How can I help you today?")
-            
-            return JSONResponse(content=str(response))
+            from starlette.responses import Response
+            return Response(content=str(response), media_type="application/xml")
 
         @self.app.post("/stream")
         async def handle_media_stream(request_data: dict):
@@ -119,14 +167,35 @@ class TwilioHandler:
                         data = await websocket.receive_text()
                         message = json.loads(data)
                         
-                        if message.get("event") == "media":
+                        event_type = message.get("event")
+                        logger.debug(f"Recieve WebSocket event: {event_type}")
+
+                        if event_type == "start":
+                            self.media_stream_sid = message.get("streamSid")
+                            logger.info(f"Media stream started: {self.media_stream_sid}")
+                            self.should_listen.set()
+                        
+                        elif event_type == "media":
                             # Handle incoming audio
                             payload = message.get("media", {}).get("payload")
                             if payload:
+                                # decode from base64
                                 audio_data = base64.b64decode(payload)
-                                self.queue_in.put(audio_data)
+                                converted_audio = self.convert_twilio_audio_to_pipeline_format(audio_data)
+                                if converted_audio:
+                                    self.audio_buffer += converted_audio
+                                    while len(self.audio_buffer) >= self.min_chunk_size:
+                                        chunk = self.audio_buffer[:self.min_chunk_size]
+                                        self.audio_buffer = self.audio_buffer[self.min_chunk_size:]
+                                        self.queue_in.put(chunk)
+                                        logger.debug(f"Sent {len(chunk)} bytes to VAD queue")
+                        
+                        elif event_type == "stop":
+                            logger.info("Media stream stopped by Twilio")
+                            break
                                 
                     except WebSocketDisconnect:
+                        logger.info("WebSocket disconnected")
                         break
                     except Exception as e:
                         logger.error(f"WebSocket error: {e}")
@@ -135,30 +204,37 @@ class TwilioHandler:
                 logger.error(f"WebSocket connection error: {e}")
             finally:
                 self.websocket = None
+                logger.info("WebSocket connection closed")
 
     async def send_audio_to_twilio(self):
         """Send audio from queue to Twilio via WebSocket."""
         while not self.stop_event.is_set() and self.websocket:
             try:
+                # Check if there's an audio chunk to send
                 if not self.queue_out.empty():
                     audio_chunk = self.queue_out.get(timeout=0.1)
                     
-                    # Encode audio as base64
-                    audio_b64 = base64.b64encode(audio_chunk).decode('utf-8')
+                    converted_audio = self.convert_pipeline_audio_to_twilio_format(audio_chunk)
+
+                    if converted_audio:
+                        # Encode audio as base64
+                        audio_b64 = base64.b64encode(converted_audio).decode('utf-8')
                     
-                    # Send to Twilio
-                    message = {
-                        "event": "media",
-                        "streamSid": self.media_stream_sid,
-                        "media": {
-                            "payload": audio_b64
+                        # Send to Twilio
+                        message = {
+                            "event": "media",
+                            "streamSid": self.media_stream_sid,
+                            "media": {"payload": audio_b64}
                         }
-                    }
-                    
-                    await self.websocket.send_text(json.dumps(message))
+
+                        await self.websocket.send_text(json.dumps(message))
+                        logger.debug(f"Sent {len(audio_chunk)} bytes -> {len(converted_audio)} bytes to Twilio")    
+                else:
+                    await asyncio.sleep(0.01)
                     
             except Exception as e:
                 logger.error(f"Error sending audio to Twilio: {e}")
+                # Small delay on error to prevent rapid0fire error logging
                 await asyncio.sleep(0.1)
 
     def start_server(self):
@@ -184,18 +260,19 @@ class TwilioHandler:
         try:
             logger.info(f"Initiating call to {self.user_number}...")
             
-            outbound_twiml = (
-                f'<?xml version="1.0" encoding="UTF-8"?>'
-                f'<Response><Connect><Stream url="wss://{self.twilio_domain}/voice/" /></Connect></Response>'
-            )
+            # outbound_twiml = f'<?xml version="1.0" encoding="UTF-8"?><Response><Connect><Stream url="wss://{self.twilio_domain}/stream" /></Connect></Response>'
+                # f'<Response><Connect><Stream url="wss://{self.twilio_domain}/voice" /></Connect></Response>'
 
           
             
             # Use ngrok or your domain for webhooks
-            webhook_url = f"{self.twilio_domain}/voice" if self.twilio_domain else f"http://localhost:{self.port}/voice"
+            webhook_url = f"{self.twilio_domain.replace('wss://', 'https://').replace('ws://', 'http://')}/voice" if self.twilio_domain else f"http://localhost:{self.port}/voice"
             
             call = self.client.calls.create(
-                from_=self.phone_number, to=self.user_number, twiml=outbound_twiml
+                from_=self.phone_number,
+                to=self.user_number,
+                url=webhook_url,
+                method='POST'
             )
 
             logger.info(f"Call initiated! SID: {call.sid}")
