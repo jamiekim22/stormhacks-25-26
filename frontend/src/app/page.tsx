@@ -1,103 +1,75 @@
-import Image from "next/image";
+const metricCards = [
+  { title: 'Active Campaigns', value: '4' },
+  { title: 'Vulnerability Score', value: '65' },
+  { title: 'Voice Calls Today', value: '7' },
+  { title: 'Training Completion', value: '82%' },
+];
 
-export default function Home() {
+const recentActivities = [
+  { time: '10:25 AM', description: 'New campaign launched', pairedTime: '9:02 AM', pairedDescription: 'Campaign paused' },
+  { time: '9:50 AM', description: 'Employee marked as vulnerable', pairedTime: '8:45 AM', pairedDescription: 'Voice call recorded' },
+  { time: '8:02 AM', description: 'Campaign paused', pairedTime: '8:30 AM', pairedDescription: 'Report exported' },
+];
+
+export default function HomePage() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="space-y-8">
+      <header>
+        <h1 className="text-3xl font-semibold text-white">Dashboard</h1>
+        <p className="text-sm text-[var(--color-text-muted)] mt-1">Stay on top of phishing simulations and employee readiness.</p>
+      </header>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {metricCards.map((card) => (
+          <div key={card.title} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-6 py-6 shadow-[0_18px_40px_rgba(5,12,26,0.35)]">
+            <p className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">{card.title}</p>
+            <p className="mt-5 text-4xl font-semibold text-white">{card.value}</p>
+            <div className="mt-6 h-1.5 rounded-full bg-[#1f2b40]">
+              <div className="h-full rounded-full bg-[var(--color-accent)]/80" style={{ width: '65%' }} />
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-5 lg:grid-cols-2">
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-6 py-6 shadow-[0_18px_40px_rgba(5,12,26,0.35)]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">Campaign Status</h2>
+            <span className="text-xs text-[var(--color-text-muted)]">This week</span>
+          </div>
+          <div className="mt-8 h-48 rounded-xl bg-[#0b1528] flex items-center justify-center text-sm text-[var(--color-text-muted)]">
+            Line chart placeholder
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        <div className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-6 py-6 shadow-[0_18px_40px_rgba(5,12,26,0.35)]">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-white">Campaign Outcomes</h2>
+            <span className="text-xs text-[var(--color-text-muted)]">Rolling 30 days</span>
+          </div>
+          <div className="mt-8 h-48 rounded-xl bg-[#0b1528] flex items-center justify-center text-sm text-[var(--color-text-muted)]">
+            Donut chart placeholder
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-6 py-6 shadow-[0_18px_40px_rgba(5,12,26,0.35)]">
+        <h2 className="text-lg font-semibold text-white">Recent Activities</h2>
+        <div className="mt-6 space-y-4 text-sm">
+          {recentActivities.map((item) => (
+            <div key={item.time} className="grid gap-4 md:grid-cols-2">
+              <div className="flex gap-4">
+                <span className="min-w-[70px] text-[var(--color-text-muted)]">{item.time}</span>
+                <span className="text-white">{item.description}</span>
+              </div>
+              <div className="flex gap-4 text-left md:text-right md:justify-end">
+                <span className="min-w-[70px] text-[var(--color-text-muted)]">{item.pairedTime}</span>
+                <span className="text-white">{item.pairedDescription}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }
