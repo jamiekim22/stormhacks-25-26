@@ -176,5 +176,88 @@ class EmployeeRepository:
             logger.error(f"Error validating employee {employee_id}: {e}")
             return False
 
-# Global repository instance
+class SecurityAssessmentRepository:
+    """Repository class for SecurityAssessment database operations."""
+    
+    @staticmethod
+    def create_security_assessment(assessment_data: dict) -> dict:
+        """
+        Create a new security assessment in the database.
+        
+        Args:
+            assessment_data: Dictionary containing assessment data
+            
+        Returns:
+            Dictionary with created assessment data including generated ID
+            
+        Raises:
+            DatabaseError: If there's an error creating the assessment
+        """
+        try:
+            # Insert the security assessment
+            insert_query = """
+                INSERT INTO SecurityAssessments (
+                    employee_id, 
+                    security_score, 
+                    resistance_level, 
+                    social_engineering_susceptibility, 
+                    feedback, 
+                    scoring_explanation
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """
+            
+            params = [
+                assessment_data['employee_id'],
+                assessment_data['security_score'],
+                assessment_data['resistance_level'],
+                assessment_data['social_engineering_susceptibility'],
+                assessment_data.get('feedback'),
+                assessment_data.get('scoring_explanation')
+            ]
+            
+            # Execute the insert
+            db.execute_query(insert_query, params)
+            
+            # Get the created assessment by querying the most recent one for this employee
+            select_query = """
+                SELECT id, employee_id, assessment_date, security_score, 
+                       resistance_level, social_engineering_susceptibility, 
+                       feedback, scoring_explanation
+                FROM SecurityAssessments 
+                WHERE employee_id = ?
+                ORDER BY assessment_date DESC 
+                LIMIT 1
+            """
+            
+            result = db.execute_query(select_query, [assessment_data['employee_id']])
+            
+            if not result:
+                raise DatabaseError("Failed to retrieve created assessment")
+            
+            created_assessment = result[0]
+            
+            # Convert to the expected format
+            assessment_response = {
+                'id': created_assessment['ID'],
+                'employee_id': created_assessment['EMPLOYEE_ID'],
+                'assessment_date': str(created_assessment['ASSESSMENT_DATE']),
+                'security_score': created_assessment['SECURITY_SCORE'],
+                'resistance_level': created_assessment['RESISTANCE_LEVEL'],
+                'social_engineering_susceptibility': created_assessment['SOCIAL_ENGINEERING_SUSCEPTIBILITY'],
+                'feedback': created_assessment['FEEDBACK'],
+                'scoring_explanation': created_assessment['SCORING_EXPLANATION']
+            }
+            
+            logger.info(f"Created security assessment with ID {assessment_response['id']} for employee {assessment_data['employee_id']}")
+            return assessment_response
+            
+        except DatabaseError as e:
+            logger.error(f"Database error creating security assessment: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error creating security assessment: {e}")
+            raise DatabaseError(f"Failed to create security assessment: {str(e)}")
+
+# Global repository instances
 employee_repo = EmployeeRepository()
+security_assessment_repo = SecurityAssessmentRepository()

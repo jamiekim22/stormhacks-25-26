@@ -100,6 +100,70 @@ class CallStatusResponse(BaseModel):
             }
         }
 
+class SecurityAssessment(BaseModel):
+    """Security Assessment data model for creating new assessments."""
+    
+    employee_id: int = Field(..., description="ID of the employee being assessed")
+    security_score: int = Field(..., ge=0, le=100, description="Security score (0-100)")
+    resistance_level: str = Field(..., description="Resistance level: Low, Medium, or High")
+    social_engineering_susceptibility: str = Field(..., description="Social engineering susceptibility: Low, Medium, or High")
+    feedback: Optional[str] = Field(None, description="Assessment feedback")
+    scoring_explanation: Optional[str] = Field(None, description="Explanation of the scoring")
+    
+    @validator('resistance_level')
+    def validate_resistance_level(cls, v):
+        """Validate resistance level is one of the allowed values."""
+        allowed_values = ['Low', 'Medium', 'High']
+        if v not in allowed_values:
+            raise ValueError(f'Resistance level must be one of: {", ".join(allowed_values)}')
+        return v
+    
+    @validator('social_engineering_susceptibility')
+    def validate_social_engineering_susceptibility(cls, v):
+        """Validate social engineering susceptibility is one of the allowed values."""
+        allowed_values = ['Low', 'Medium', 'High']
+        if v not in allowed_values:
+            raise ValueError(f'Social engineering susceptibility must be one of: {", ".join(allowed_values)}')
+        return v
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "employee_id": 1,
+                "security_score": 75,
+                "resistance_level": "Medium",
+                "social_engineering_susceptibility": "Low",
+                "feedback": "Employee showed good awareness but fell for phishing attempt",
+                "scoring_explanation": "Score based on response time and verification attempts"
+            }
+        }
+
+class SecurityAssessmentResponse(BaseModel):
+    """Response model for created security assessment."""
+    
+    id: int = Field(..., description="Generated assessment ID")
+    employee_id: int = Field(..., description="ID of the assessed employee")
+    assessment_date: str = Field(..., description="Assessment creation timestamp")
+    security_score: int = Field(..., description="Security score")
+    resistance_level: str = Field(..., description="Resistance level")
+    social_engineering_susceptibility: str = Field(..., description="Social engineering susceptibility")
+    feedback: Optional[str] = Field(None, description="Assessment feedback")
+    scoring_explanation: Optional[str] = Field(None, description="Scoring explanation")
+    
+    class Config:
+        schema_extra = {
+            "example": {
+                "id": 123,
+                "employee_id": 1,
+                "assessment_date": "2025-10-05 14:30:00",
+                "security_score": 75,
+                "resistance_level": "Medium",
+                "social_engineering_susceptibility": "Low",
+                "feedback": "Employee showed good awareness but fell for phishing attempt",
+                "scoring_explanation": "Score based on response time and verification attempts"
+            }
+        }
+
 class ErrorResponse(BaseModel):
     """Standard error response model."""
     
