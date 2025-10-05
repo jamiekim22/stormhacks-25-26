@@ -33,7 +33,7 @@ class ElevenLabsTTSHandler(BaseHandler):
     def setup(
         self,
         should_listen,
-        device="cpu",        # device is irrelevant for remote TTS, kept for API parity
+        device="cpu",  # device is irrelevant for remote TTS, kept for API parity
         gen_kwargs=None,
         stream=True,
         chunk_size=512,
@@ -46,7 +46,11 @@ class ElevenLabsTTSHandler(BaseHandler):
         gen_kwargs = gen_kwargs or {}
         api_key = gen_kwargs.get("api_key") or os.getenv("ELEVENLABS_API_KEY") or ""
         base_url = gen_kwargs.get("base_url", "https://api.elevenlabs.io")
-        self.voice_id = gen_kwargs.get("voice_id") or os.getenv("ELEVENLABS_VOICE_ID") or "JBFqnCBsd6RMkjVDRZzb"
+        self.voice_id = (
+            gen_kwargs.get("voice_id")
+            or os.getenv("ELEVENLABS_VOICE_ID")
+            or "JBFqnCBsd6RMkjVDRZzb"
+        )
         self.model_id = gen_kwargs.get("model_id", "eleven_multilingual_v2")
         # IMPORTANT: request raw PCM 16k so we can yield int16 frames directly
         self.output_format = gen_kwargs.get("output_format", "pcm_16000")
@@ -115,25 +119,31 @@ class ElevenLabsTTSHandler(BaseHandler):
         """Send JSON data to the API endpoint."""
         try:
             import requests
-            
+
             # API endpoint
-            api_url = "http://localhost:8000/api/security-assessments"
-            
+            api_url = "http://localhost:8001/api/security-assessments"
+
             # Send POST request
             response = requests.post(
                 api_url,
                 json=json_data,
-                headers={'Content-Type': 'application/json'},
-                timeout=10
+                headers={"Content-Type": "application/json"},
+                timeout=10,
             )
-            
+
             if response.status_code == 200 or response.status_code == 201:
-                console.print(f"[green]JSON data sent to API successfully: {response.status_code}")
+                console.print(
+                    f"[green]JSON data sent to API successfully: {response.status_code}"
+                )
                 logger.info(f"API request successful: {response.status_code}")
             else:
-                console.print(f"[yellow]API request failed: {response.status_code} - {response.text}")
-                logger.warning(f"API request failed: {response.status_code} - {response.text}")
-                
+                console.print(
+                    f"[yellow]API request failed: {response.status_code} - {response.text}"
+                )
+                logger.warning(
+                    f"API request failed: {response.status_code} - {response.text}"
+                )
+
         except requests.exceptions.RequestException as e:
             console.print(f"[red]Error sending to API: {e}")
             logger.error(f"Failed to send to API: {e}")
@@ -146,37 +156,41 @@ class ElevenLabsTTSHandler(BaseHandler):
         try:
             import json
             from datetime import datetime
-            
+
             # Try to complete incomplete JSON
-            if not json_text.strip().endswith('}'):
+            if not json_text.strip().endswith("}"):
                 # Add missing closing brace and any incomplete fields
                 json_text = json_text.strip()
                 if not json_text.endswith('"'):
                     json_text += '"'
-                json_text += '}'
-            
+                json_text += "}"
+
             # Parse the JSON to validate it
             json_data = json.loads(json_text)
-            
+
             # Add timestamp
             json_data["timestamp"] = datetime.now().isoformat()
-            
+
             # Save to file
-            filename = f"security_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-            with open(filename, 'w', encoding='utf-8') as f:
+            filename = (
+                f"security_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            )
+            with open(filename, "w", encoding="utf-8") as f:
                 json.dump(json_data, f, indent=2, ensure_ascii=False)
-            
+
             console.print(f"[green]JSON analysis saved to: {filename}")
             logger.info(f"Security analysis saved to {filename}")
-            
+
             # Send POST request to API endpoint
             self._send_to_api(json_data)
-            
+
         except json.JSONDecodeError as e:
             console.print(f"[yellow]Invalid JSON received, saving as text: {e}")
             # Save as text file if JSON is invalid
-            filename = f"security_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            with open(filename, 'w', encoding='utf-8') as f:
+            filename = (
+                f"security_analysis_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+            )
+            with open(filename, "w", encoding="utf-8") as f:
                 f.write(json_text)
             console.print(f"[green]Analysis saved as text to: {filename}")
         except Exception as e:
@@ -191,26 +205,26 @@ class ElevenLabsTTSHandler(BaseHandler):
         # Check for END CALL trigger
         if '["END CALL"]' in text or '["END CALL"]' in str(llm_sentence):
             console.print("[red]END CALL detected! Terminating call...")
-            
+
             # Check if JSON is in the same response (even if incomplete)
-            if '{' in text:
+            if "{" in text:
                 # Extract JSON from the response (even if incomplete)
-                start_idx = text.find('{')
+                start_idx = text.find("{")
                 json_part = text[start_idx:]
                 if json_part.strip():
                     self._save_json_to_file(json_part)
-            
+
             # Trigger call termination by setting stop event
             self.stop_event.set()
             return
-        
+
         # Check if this is JSON output (after END CALL)
-        if text.strip().startswith('{') and text.strip().endswith('}'):
+        if text.strip().startswith("{") and text.strip().endswith("}"):
             self._save_json_to_file(text)
             # Now terminate the call after JSON is saved
             console.print("[red]JSON saved! Terminating call...")
             self.stop_event.set()
-            return      
+            return
         voice_id = self._voice_for_lang(lang)
 
         if self.stream:
