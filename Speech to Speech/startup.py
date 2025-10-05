@@ -44,13 +44,13 @@ def run_target_script():
         print(f"An unexpected error occurred: {e}")
 
 def main():
-    # 1. Set up argument parser to accept the target script's name
+    # 1. Set up argument parser to accept the target script's name and phone number
     parser = argparse.ArgumentParser(
         description="Generates a config.json from .env and runs a target Python script."
     )
     parser.add_argument(
-        "target_script", 
-        help="The path to the Python script to run after creating the config."
+        "phone_number",
+        help="The phone number to use for Twilio user number (e.g., +16047832553)"
     )
     args = parser.parse_args()
 
@@ -82,7 +82,7 @@ def main():
         data['twilio_auth_token'] = config['token']
         data['twilio_phone_number'] = config['number']
         data['twilio_domain'] = config['domain']
-        data['twilio_user_number'] = '+16047832553'
+        data['twilio_user_number'] = args.phone_number
 
         with open(config_file_path, 'w') as f:
             json.dump(data, f, indent=2)
@@ -91,7 +91,10 @@ def main():
         # 4. Run the python command for the target script
         run_target_script()
 
+    except Exception as e:
+        print(f"An error occurred: {e}")
     finally:
+        pass
     #     # 5. Clean up: always remove the temporary config file
     #     if os.path.exists(config_file_path):
     #         os.remove(config_file_path)
