@@ -11,8 +11,11 @@ from models import (
     CallSimulationRequest, 
     CallSimulationResponse, 
     CallStatusResponse,
+    SecurityAssessment,
+    SecurityAssessmentResponse,
+    ErrorResponse
 )
-from repository import employee_repo
+from repository import employee_repo, security_assessment_repo
 from snowflake.connector.errors import DatabaseError
 
 # Configure logging
@@ -159,6 +162,120 @@ async def get_employee(employee_id: int):
             detail={
                 "error": "internal_error",
                 "message": "An unexpected error occurred"
+            }
+        )
+
+@app.post("/api/security-assessments", response_model=SecurityAssessmentResponse)
+async def create_security_assessment(assessment: SecurityAssessment):
+    """
+    Create a new security assessment for an employee.
+    
+    Args:
+        assessment: SecurityAssessment data containing all required fields
+        
+    Returns:
+        SecurityAssessmentResponse: Created assessment with generated ID and timestamp
+        
+    Raises:
+        HTTPException: 400 if employee doesn't exist, 500 for other errors
+    """
+    try:
+        # Validate that the employee exists
+        if not employee_repo.validate_employee_exists(assessment.employee_id):
+            logger.warning(f"Attempt to create assessment for non-existent employee {assessment.employee_id}")
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "employee_not_found",
+                    "message": f"Employee with ID {assessment.employee_id} does not exist"
+                }
+            )
+        
+        # Convert Pydantic model to dict for repository
+        assessment_data = assessment.dict()
+        
+        # Create the assessment
+        created_assessment = security_assessment_repo.create_security_assessment(assessment_data)
+        
+        logger.info(f"Created security assessment {created_assessment['id']} for employee {assessment.employee_id}")
+        return SecurityAssessmentResponse(**created_assessment)
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except DatabaseError as e:
+        logger.error(f"Database error in create_security_assessment: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "database_error",
+                "message": "Failed to create security assessment in database"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in create_security_assessment: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_error",
+                "message": "An unexpected error occurred while creating the assessment"
+            }
+        )
+
+@app.get("/api/employees/{employee_id}/security-assessments", response_model=List[SecurityAssessmentResponse])
+async def get_employee_security_assessments(employee_id: int):
+    """
+    Get all security assessments for a specific employee.
+    
+    Args:
+        employee_id: The employee's ID
+        
+    Returns:
+        List of SecurityAssessmentResponse objects for the employee
+        
+    Raises:
+        HTTPException: 404 if employee doesn't exist, 500 for other errors
+    """
+    try:
+        # Validate that the employee exists
+        if not employee_repo.validate_employee_exists(employee_id):
+            logger.warning(f"Attempt to get assessments for non-existent employee {employee_id}")
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "employee_not_found",
+                    "message": f"Employee with ID {employee_id} does not exist"
+                }
+            )
+        
+        # Get the assessments
+        assessments = security_assessment_repo.get_assessments_by_employee_id(employee_id)
+        
+        # Convert to response models
+        assessment_responses = [SecurityAssessmentResponse(**assessment) for assessment in assessments]
+        
+        logger.info(f"Retrieved {len(assessment_responses)} assessments for employee {employee_id}")
+        return assessment_responses
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except DatabaseError as e:
+        logger.error(f"Database error getting assessments for employee {employee_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "database_error",
+                "message": f"Failed to fetch assessments for employee {employee_id}"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error getting assessments for employee {employee_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_error",
+                "message": "An unexpected error occurred while fetching assessments"
             }
         )
 
