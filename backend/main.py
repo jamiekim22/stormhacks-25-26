@@ -222,6 +222,63 @@ async def create_security_assessment(assessment: SecurityAssessment):
             }
         )
 
+@app.get("/api/employees/{employee_id}/security-assessments", response_model=List[SecurityAssessmentResponse])
+async def get_employee_security_assessments(employee_id: int):
+    """
+    Get all security assessments for a specific employee.
+    
+    Args:
+        employee_id: The employee's ID
+        
+    Returns:
+        List of SecurityAssessmentResponse objects for the employee
+        
+    Raises:
+        HTTPException: 404 if employee doesn't exist, 500 for other errors
+    """
+    try:
+        # Validate that the employee exists
+        if not employee_repo.validate_employee_exists(employee_id):
+            logger.warning(f"Attempt to get assessments for non-existent employee {employee_id}")
+            raise HTTPException(
+                status_code=404,
+                detail={
+                    "error": "employee_not_found",
+                    "message": f"Employee with ID {employee_id} does not exist"
+                }
+            )
+        
+        # Get the assessments
+        assessments = security_assessment_repo.get_assessments_by_employee_id(employee_id)
+        
+        # Convert to response models
+        assessment_responses = [SecurityAssessmentResponse(**assessment) for assessment in assessments]
+        
+        logger.info(f"Retrieved {len(assessment_responses)} assessments for employee {employee_id}")
+        return assessment_responses
+        
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
+    except DatabaseError as e:
+        logger.error(f"Database error getting assessments for employee {employee_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "database_error",
+                "message": f"Failed to fetch assessments for employee {employee_id}"
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error getting assessments for employee {employee_id}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_error",
+                "message": "An unexpected error occurred while fetching assessments"
+            }
+        )
+
 @app.post("/api/simulate-call", response_model=CallSimulationResponse)
 async def simulate_call(
     request: CallSimulationRequest,

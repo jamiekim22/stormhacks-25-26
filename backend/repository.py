@@ -203,17 +203,17 @@ class SecurityAssessmentRepository:
                     social_engineering_susceptibility, 
                     feedback, 
                     scoring_explanation
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                ) VALUES (%(employee_id)s, %(security_score)s, %(resistance_level)s, %(social_engineering_susceptibility)s, %(feedback)s, %(scoring_explanation)s)
             """
             
-            params = [
-                assessment_data['employee_id'],
-                assessment_data['security_score'],
-                assessment_data['resistance_level'],
-                assessment_data['social_engineering_susceptibility'],
-                assessment_data.get('feedback'),
-                assessment_data.get('scoring_explanation')
-            ]
+            params = {
+                'employee_id': assessment_data['employee_id'],
+                'security_score': assessment_data['security_score'],
+                'resistance_level': assessment_data['resistance_level'],
+                'social_engineering_susceptibility': assessment_data['social_engineering_susceptibility'],
+                'feedback': assessment_data.get('feedback'),
+                'scoring_explanation': assessment_data.get('scoring_explanation')
+            }
             
             # Execute the insert
             db.execute_query(insert_query, params)
@@ -224,12 +224,12 @@ class SecurityAssessmentRepository:
                        resistance_level, social_engineering_susceptibility, 
                        feedback, scoring_explanation
                 FROM SecurityAssessments 
-                WHERE employee_id = ?
+                WHERE employee_id = %(employee_id)s
                 ORDER BY assessment_date DESC 
                 LIMIT 1
             """
             
-            result = db.execute_query(select_query, [assessment_data['employee_id']])
+            result = db.execute_query(select_query, {'employee_id': assessment_data['employee_id']})
             
             if not result:
                 raise DatabaseError("Failed to retrieve created assessment")
@@ -257,6 +257,56 @@ class SecurityAssessmentRepository:
         except Exception as e:
             logger.error(f"Unexpected error creating security assessment: {e}")
             raise DatabaseError(f"Failed to create security assessment: {str(e)}")
+    
+    @staticmethod
+    def get_assessments_by_employee_id(employee_id: int) -> List[dict]:
+        """
+        Get all security assessments for a specific employee.
+        
+        Args:
+            employee_id: The employee's ID
+            
+        Returns:
+            List of assessment dictionaries
+            
+        Raises:
+            DatabaseError: If there's an error fetching data
+        """
+        try:
+            query = """
+                SELECT id, employee_id, assessment_date, security_score, 
+                       resistance_level, social_engineering_susceptibility, 
+                       feedback, scoring_explanation
+                FROM SecurityAssessments 
+                WHERE employee_id = %(employee_id)s
+                ORDER BY assessment_date DESC
+            """
+            
+            results = db.execute_query(query, {'employee_id': employee_id})
+            
+            assessments = []
+            for row in results:
+                assessment = {
+                    'id': row['ID'],
+                    'employee_id': row['EMPLOYEE_ID'],
+                    'assessment_date': str(row['ASSESSMENT_DATE']),
+                    'security_score': row['SECURITY_SCORE'],
+                    'resistance_level': row['RESISTANCE_LEVEL'],
+                    'social_engineering_susceptibility': row['SOCIAL_ENGINEERING_SUSCEPTIBILITY'],
+                    'feedback': row['FEEDBACK'],
+                    'scoring_explanation': row['SCORING_EXPLANATION']
+                }
+                assessments.append(assessment)
+            
+            logger.info(f"Retrieved {len(assessments)} assessments for employee {employee_id}")
+            return assessments
+            
+        except DatabaseError as e:
+            logger.error(f"Database error fetching assessments for employee {employee_id}: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error fetching assessments for employee {employee_id}: {e}")
+            raise DatabaseError(f"Failed to fetch assessments for employee {employee_id}: {str(e)}")
 
 # Global repository instances
 employee_repo = EmployeeRepository()
