@@ -10,6 +10,7 @@ requirements.txt    - Dependencies
 ```
 
 #### To run the backend server:
+Fill Snowflake db information in a .env file, then
 ```
 cd backend
 python server.py
