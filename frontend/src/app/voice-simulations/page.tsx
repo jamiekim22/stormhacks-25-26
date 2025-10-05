@@ -11,10 +11,38 @@ const VoiceSimulationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const handleCreateCall = (employee: Employee) => {
+  const handleCreateCall = async (employee: Employee) => {
     console.log('Creating call for employee:', employee);
-    // TODO: Implement call creation logic
-    alert(`Creating call for ${employee.name} (${employee.phone_number})`);
+    
+    try {
+      // Call the simulate-call API endpoint
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/simulate-call`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          employee_id: employee.id,
+          phone_number: employee.phone_number,
+          scenario_type: 'default'
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to initiate call: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('Call simulation response:', result);
+      
+      // Show success message
+      alert(`Call simulation initiated successfully!\n\nCall ID: ${result.call_id}\nEmployee: ${result.employee_name}\nPhone: ${result.employee_phone}\n\nStatus: ${result.message}`);
+      
+    } catch (error) {
+      console.error('Error initiating call:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to initiate call for ${employee.name}. Please try again.\n\nError: ${errorMessage}`);
+    }
   };
 
   useEffect(() => {

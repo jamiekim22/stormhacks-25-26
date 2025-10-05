@@ -46,6 +46,7 @@ class CallSimulationRequest(BaseModel):
     """Request model for call simulation endpoint."""
     
     employee_id: int = Field(..., gt=0, description="ID of employee to call")
+    phone_number: str = Field(..., description="Phone number to call")
     scenario_type: str = Field(
         default="default", 
         description="Type of scam scenario to simulate",
@@ -56,6 +57,7 @@ class CallSimulationRequest(BaseModel):
         schema_extra = {
             "example": {
                 "employee_id": 1,
+                "phone_number": "+16047832553",
                 "scenario_type": "default"
             }
         }

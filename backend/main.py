@@ -1,3 +1,4 @@
+from asyncio import subprocess
 from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -300,6 +301,13 @@ async def simulate_call(
     try:
         logger.info(f"Initiating call simulation for employee {request.employee_id}")
         
+        # Extract phone number from request
+        phone_number = request.phone_number
+        logger.info(f"Phone number to call: {phone_number}")
+
+        command = ['python', '../Speech to Speech/startup.py', phone_number]
+        subprocess.run(command, check=True)
+        
         # Validate employee exists
         employee = employee_repo.get_employee_by_id(request.employee_id)
         if not employee:
@@ -312,13 +320,13 @@ async def simulate_call(
                 }
             )
         
-        # Validate employee has phone number
-        if not employee.phone_number:
+        # Validate phone number is provided
+        if not phone_number or not phone_number.strip():
             raise HTTPException(
                 status_code=400,
                 detail={
                     "error": "no_phone_number",
-                    "message": f"Employee {employee.name} does not have a phone number",
+                    "message": "Phone number is required for call simulation",
                     "details": {"employee_id": request.employee_id}
                 }
             )
