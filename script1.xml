@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+<Say voice="woman">We are in script 1</Say>
+<Redirect method="POST">./script2.xml</Redirect>
+</Response>
