@@ -4,11 +4,18 @@ import React, { useState, useEffect } from 'react';
 import PageTemplate from '@/components/PageTemplate';
 import { employeeService } from '@/api/employeeService';
 import { Employee } from '@/types/Employee';
+import { Phone } from 'lucide-react';
 
 const VoiceSimulationsPage: React.FC = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const handleCreateCall = (employee: Employee) => {
+    console.log('Creating call for employee:', employee);
+    // TODO: Implement call creation logic
+    alert(`Creating call for ${employee.name} (${employee.phone_number})`);
+  };
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -39,6 +46,7 @@ const VoiceSimulationsPage: React.FC = () => {
                 <col className="w-24" />
                 <col className="w-80" />
                 <col className="w-48" />
+                <col className="w-32" />
               </colgroup>
               <thead>
                 <tr className="bg-[var(--color-sidebar-background)] border-b border-[var(--color-border)]">
@@ -51,6 +59,9 @@ const VoiceSimulationsPage: React.FC = () => {
                   <th className="pl-4 pr-4 px-8 py-5 font-semibold text-white resize-x overflow-hidden">
                     <div className="pl-4 pr-4">Phone Number</div>
                   </th>
+                  <th className="pl-4 pr-4 px-8 py-5 font-semibold text-white resize-x overflow-hidden">
+                    <div className="pl-4 pr-4">Actions</div>
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -59,6 +70,15 @@ const VoiceSimulationsPage: React.FC = () => {
                     <td className="text-center paddingClass px-8 py-5 text-[var(--color-foreground)] truncate">{employee.id}</td>
                     <td className="text-center paddingClass px-8 py-5 text-[var(--color-foreground)] truncate">{employee.name}</td>
                     <td className="text-center paddingClass px-8 py-5 text-[var(--color-text-muted)] truncate">{employee.phone_number}</td>
+                    <td className="text-center paddingClass px-8 py-5">
+                      <button
+                        onClick={() => handleCreateCall(employee)}
+                        className="bg-[var(--color-accent)] hover:bg-blue-600 text-white p-3 rounded-lg transition-colors duration-150"
+                        title={`Call ${employee.name}`}
+                      >
+                        <Phone size={20} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
