@@ -58,3 +58,7 @@ a {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(148, 163, 184, 0.55);
 }
+
+.paddingClass{
+  padding: 10px
+}

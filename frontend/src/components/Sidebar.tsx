@@ -31,20 +31,20 @@ export default function Sidebar() {
   return (
     <aside className="w-68 max-w-[18rem] bg-[var(--color-sidebar-background)] border-r border-[var(--color-border)] flex flex-col shadow-[0_20px_45px_rgba(5,12,25,0.45)]">
       {/* Logo / Brand */}
-      <div className="px-6 pt-8 pb-6 border-b border-[rgba(255,255,255,0.04)]">
+      <div className="px-6 pt-8 pb-6 border-b border-[rgba(255,255,255,0.04)] paddingClass">
         <div className="flex items-center gap-3">
           <div className="h-11 w-11 rounded-xl bg-[var(--color-accent)]/20 text-[var(--color-accent)] flex items-center justify-center">
             <Shield className="h-6 w-6" />
           </div>
           <div className="leading-tight">
-            <p className="text-sm text-[var(--color-text-muted)]">PhishPatrol</p>
-            <p className="text-lg font-semibold text-white">Pro</p>
+            <p className="text-xl font-semibold text-white">PhishPatrol</p>
+            <p className="text-sm text-[var(--color-text-muted)]">Enterprise Version</p>
           </div>
         </div>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-4 py-6">
+      <nav className="flex-1 overflow-y-auto px-4 py-6 paddingClass">
         <ul className="space-y-1.5">
           {navigationItems.map((item) => {
             const Icon = item.icon;
@@ -78,7 +78,7 @@ export default function Sidebar() {
       </nav>
 
       {/* User footer */}
-      <div className="px-6 py-5 border-t border-[rgba(255,255,255,0.04)] bg-[var(--color-sidebar-background)]/92">
+      <div className="px-6 py-5 border-t border-[rgba(255,255,255,0.04)] bg-[var(--color-sidebar-background)]/92 paddingClass">
         <div className="flex items-center gap-3">
           <div className="h-9 w-9 rounded-full bg-[var(--color-accent)]/25 flex items-center justify-center text-[var(--color-accent)]">
             <Users className="h-4 w-4" />
