@@ -26,7 +26,7 @@ export default function PageTemplate({
         <p className="mt-1 text-sm text-[var(--color-text-muted)]">{description}</p>
       </div>
 
-      <div className={mergedBodyClassName}>
+      <div className="space-y-8 paddingClass">
         {children}
       </div>
     </div>
