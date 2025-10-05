@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-<Say voice="man">We are in script 2</Say>
-<!-- <Redirect>./script2.xml</Redirect> -->
-</Response>
