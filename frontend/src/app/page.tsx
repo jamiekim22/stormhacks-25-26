@@ -1,3 +1,5 @@
+import PageTemplate from "@/components/PageTemplate";
+
 const metricCards = [
   { title: 'Active Campaigns', value: '4' },
   { title: 'Vulnerability Score', value: '65' },
@@ -13,12 +15,11 @@ const recentActivities = [
 
 export default function HomePage() {
   return (
-    <div className="space-y-8">
-      <header>
-        <h1 className="text-3xl font-semibold text-white">Dashboard</h1>
-        <p className="text-sm text-[var(--color-text-muted)] mt-1">Stay on top of phishing simulations and employee readiness.</p>
-      </header>
-
+    <PageTemplate
+      title="Dashboard"
+      description="Stay on top of phishing simulations and employee readiness."
+      bodyClassName="space-y-8"
+    >
       <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
         {metricCards.map((card) => (
           <div key={card.title} className="rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)]/90 px-6 py-6 shadow-[0_18px_40px_rgba(5,12,26,0.35)]">
@@ -70,6 +71,6 @@ export default function HomePage() {
           ))}
         </div>
       </section>
-    </div>
+    </PageTemplate>
   );
 }

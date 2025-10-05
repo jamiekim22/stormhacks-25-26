@@ -16,8 +16,8 @@ import {
 
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { name: 'Campaigns', href: '/campaigns', icon: Target },
   { name: 'Employees', href: '/employees', icon: Users },
+  { name: 'Campaigns', href: '/campaigns', icon: Target },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Voice Simulations', href: '/voice-simulations', icon: PhoneCall },
   { name: 'Training Modules', href: '/training-modules', icon: GraduationCap },
