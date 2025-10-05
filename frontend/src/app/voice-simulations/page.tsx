@@ -11,20 +11,30 @@ const VoiceSimulationsPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // const handleCreateCall = async() => {
+  //   const response = await fetch(`https://8e48e864cdbd.ngrok-free.app/call`, {
+  //     method: 'POST',
+  //     headers: {
+  //       'Content-Type': 'application/json',
+  //     },
+  //     body: JSON.stringify({
+  //       phone: '+17789279764',
+  //     }),
+  //   });
+  // };
+
   const handleCreateCall = async (employee: Employee) => {
     console.log('Creating call for employee:', employee);
     
     try {
       // Call the simulate-call API endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/simulate-call`, {
+      const response = await fetch(`https://8e48e864cdbd.ngrok-free.app/call`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          employee_id: employee.id,
-          phone_number: employee.phone_number,
-          scenario_type: 'default'
+          phone: employee.phone_number,
         }),
       });
 
