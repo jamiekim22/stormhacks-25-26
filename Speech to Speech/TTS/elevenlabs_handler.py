@@ -111,6 +111,36 @@ class ElevenLabsTTSHandler(BaseHandler):
         """
         return self.voice_id
 
+    def _send_to_api(self, json_data):
+        """Send JSON data to the API endpoint."""
+        try:
+            import requests
+            
+            # API endpoint
+            api_url = "http://localhost:8000/api/security-assessments"
+            
+            # Send POST request
+            response = requests.post(
+                api_url,
+                json=json_data,
+                headers={'Content-Type': 'application/json'},
+                timeout=10
+            )
+            
+            if response.status_code == 200 or response.status_code == 201:
+                console.print(f"[green]JSON data sent to API successfully: {response.status_code}")
+                logger.info(f"API request successful: {response.status_code}")
+            else:
+                console.print(f"[yellow]API request failed: {response.status_code} - {response.text}")
+                logger.warning(f"API request failed: {response.status_code} - {response.text}")
+                
+        except requests.exceptions.RequestException as e:
+            console.print(f"[red]Error sending to API: {e}")
+            logger.error(f"Failed to send to API: {e}")
+        except Exception as e:
+            console.print(f"[red]Unexpected error sending to API: {e}")
+            logger.error(f"Unexpected error sending to API: {e}")
+
     def _save_json_to_file(self, json_text):
         """Save JSON output to a file."""
         try:
@@ -138,6 +168,9 @@ class ElevenLabsTTSHandler(BaseHandler):
             
             console.print(f"[green]JSON analysis saved to: {filename}")
             logger.info(f"Security analysis saved to {filename}")
+            
+            # Send POST request to API endpoint
+            self._send_to_api(json_data)
             
         except json.JSONDecodeError as e:
             console.print(f"[yellow]Invalid JSON received, saving as text: {e}")

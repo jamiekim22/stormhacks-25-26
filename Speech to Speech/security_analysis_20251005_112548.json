@@ -1,0 +1,8 @@
+{
+  "employee_id": 1,
+  "security_score": 20,
+  "resistance_level": "Low",
+  "social_engineering_susceptibility": "High",
+  "feedback": "User provided code immediately with no questions.",
+  "timestamp": "2025-10-05T11:25:48.854052"
+}

@@ -1,7 +1,7 @@
 import { Employee } from '../types/Employee';
 import { SecurityAssessment } from '../types/SecurityAssessment';
 
-const API_BASE_URL: string = process.env.NEXT_PUBLIC_API_URL || '/api';
+const API_BASE_URL: string = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
 
 class EmployeeService {
   async getAllEmployees(): Promise<Employee[]> {
