@@ -60,14 +60,12 @@ export default function Sidebar() {
                       : 'text-[var(--color-text-muted)] hover:text-white hover:bg-[var(--color-sidebar-hover)]/90'
                   }`}
                 >
-                  <span
-                    className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors duration-200 ${
-                      isActive
-                        ? 'bg-[var(--color-accent)]/15 text-[var(--color-accent)]'
-                        : 'bg-transparent text-[var(--color-text-muted)] group-hover:text-[var(--color-accent)]'
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
+                  <span className="flex h-9 w-9 items-center justify-center">
+                    <Icon className={`h-5 w-5 transition-colors duration-200 ${
+                      isActive 
+                        ? 'text-[var(--color-accent)]' 
+                        : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-accent)]'
+                    }`} />
                   </span>
                   <span>{item.name}</span>
                 </Link>
