@@ -26,9 +26,14 @@ def get_ngrok_url():
 
 def update_server_urls(public_url):
     """Update the server XML content with public URLs"""
+    # Set the public URL in the server
+    from server import set_public_url
+    set_public_url(public_url)
+    
     xml_content['script1'] = f'''<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-<Say voice="woman">We are in script 1</Say>
+<Say voice="woman">Hello! Please speak after the beep.</Say>
+<Record maxLength="10" action="{public_url}/record_handler" method="POST" recordingStatusCallback="{public_url}/recording_status" />
 <Redirect method="POST">{public_url}/script2</Redirect>
 </Response>'''
     
