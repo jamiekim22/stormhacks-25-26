@@ -1,19 +1,73 @@
-import PageTemplate from "@/components/PageTemplate";
+'use client';
 
-export default function VoiceSimulationsPage() {
+import React, { useState, useEffect } from 'react';
+import PageTemplate from '@/components/PageTemplate';
+import { employeeService } from '@/api/employeeService';
+import { Employee } from '@/types/Employee';
+
+const VoiceSimulationsPage: React.FC = () => {
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        const data = await employeeService.getAllEmployees();
+        setEmployees(data);
+      } catch (err) {
+        setError('Failed to fetch employees');
+        console.error('Error fetching employees:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployees();
+  }, []);
+
   return (
-    <PageTemplate
-      title="Voice Simulations"
-      description="Manage vishing scenarios, monitor call quality, and analyse AI-guided conversations."
-      bodyClassName="px-10 py-14 text-center"
-    >
-      <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[var(--color-accent)]/15 text-[var(--color-accent)]">
-        <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2 8.5c1.72 3.82 5 7.1 8.82 8.82L13 15l5 5-2.5 2.5C9 21 3 15 1.5 8.5L4 6l-2-2 3-3 5 5-3 3z" />
-        </svg>
+    <PageTemplate title="Voice Simulations" description="Employee information display">
+      <div className="container mx-auto p-6">        
+        {loading && <p className="text-[var(--color-text-muted)]">Loading employees...</p>}
+        {error && <p className="text-red-400">{error}</p>}
+        
+        {!loading && !error && (
+          <div className="overflow-x-auto rounded-lg border border-[var(--color-border)]">
+            <table className="min-w-full bg-[var(--color-surface)] text-white table-fixed">
+              <colgroup>
+                <col className="w-24" />
+                <col className="w-80" />
+                <col className="w-48" />
+              </colgroup>
+              <thead>
+                <tr className="bg-[var(--color-sidebar-background)] border-b border-[var(--color-border)]">
+                  <th className="pl-4 pr-4 px-8 py-5 font-semibold text-white resize-x overflow-hidden">
+                    <div className="pl-4 pr-4">ID</div>
+                  </th>
+                  <th className="pl-4 pr-4 px-8 py-5 font-semibold text-white resize-x overflow-hidden">
+                    <div className="pl-4 pr-4">Name</div>
+                  </th>
+                  <th className="pl-4 pr-4 px-8 py-5 font-semibold text-white resize-x overflow-hidden">
+                    <div className="pl-4 pr-4">Phone Number</div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {employees.map((employee) => (
+                  <tr key={employee.id} className="border-b border-[var(--color-border)] hover:bg-[var(--color-sidebar-hover)] transition-colors duration-150">
+                    <td className="text-center paddingClass px-8 py-5 text-[var(--color-foreground)] truncate">{employee.id}</td>
+                    <td className="text-center paddingClass px-8 py-5 text-[var(--color-foreground)] truncate">{employee.name}</td>
+                    <td className="text-center paddingClass px-8 py-5 text-[var(--color-text-muted)] truncate">{employee.phone_number}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
-      <h2 className="mt-6 text-2xl font-semibold text-white">Voice command center coming soon</h2>
-      <p className="mt-3 text-sm text-[var(--color-text-muted)]">Replay recordings, inspect sentiment, and orchestrate blended voice + email scenarios.</p>
     </PageTemplate>
   );
-}
+};
+
+export default VoiceSimulationsPage;

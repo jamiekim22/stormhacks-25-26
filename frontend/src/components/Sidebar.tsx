@@ -16,10 +16,10 @@ import {
 
 const navigationItems = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { name: 'Voice Simulations', href: '/voice-simulations', icon: PhoneCall },
   { name: 'Employees', href: '/employees', icon: Users },
   { name: 'Campaigns', href: '/campaigns', icon: Target },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-  { name: 'Voice Simulations', href: '/voice-simulations', icon: PhoneCall },
   { name: 'Training Modules', href: '/training-modules', icon: GraduationCap },
   { name: 'Settings', href: '/settings', icon: Settings },
   { name: 'Help & Support', href: '/help', icon: HelpCircle },
